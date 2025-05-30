@@ -26,7 +26,18 @@ pub enum TokenType {
 pub enum Literal {
     String(String),
     Number(f64),
+    #[allow(dead_code)]
     Boolean(bool),
+}
+
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Literal::String(s) => write!(f, "\"{}\"", s),
+            Literal::Number(n) => write!(f, "{}", n),
+            Literal::Boolean(b) => write!(f, "{}", b),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +45,7 @@ pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub literal: Option<Literal>,
+    #[allow(dead_code)]
     pub line: u32,
 }
 
@@ -50,10 +62,10 @@ impl Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{:?} {} {:?}",
-            self.token_type, self.lexeme, self.literal
-        )
+        if let Some(literal) = &self.literal {
+            write!(f, "{:?} {} {}", self.token_type, self.lexeme, literal)
+        } else {
+            write!(f, "{:?} {} None", self.token_type, self.lexeme)
+        }
     }
 }

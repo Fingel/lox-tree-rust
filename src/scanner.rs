@@ -3,10 +3,10 @@ use crate::{
     tokens::{Literal, Token, TokenType},
 };
 
-struct Scanner {
+pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
-    error_reporter: ErrorReporter,
+    pub error_reporter: ErrorReporter,
 
     start: usize,
     current: usize,
@@ -14,7 +14,7 @@ struct Scanner {
 }
 
 impl Scanner {
-    fn new(source: String) -> Self {
+    pub fn new(source: String) -> Self {
         Scanner {
             source,
             tokens: Vec::new(),
@@ -25,7 +25,7 @@ impl Scanner {
         }
     }
 
-    fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(&mut self) -> Vec<Token> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
@@ -56,7 +56,7 @@ impl Scanner {
     }
 
     fn string(&mut self) {
-        while self.peek() != '"' && self.is_at_end() {
+        while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
             }
@@ -71,6 +71,33 @@ impl Scanner {
         // Trim the surrounding quotes
         let value = self.source[self.start + 1..self.current - 1].to_string();
         self.add_literal_token(TokenType::String, Some(Literal::String(value)));
+    }
+
+    fn identifier(&mut self) {
+        while self.peek().is_alphanumeric() {
+            self.advance();
+        }
+        let text = self.source[self.start..self.current].to_string();
+        let token_type = match text.as_str() {
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier,
+        };
+        self.add_token(token_type);
     }
 
     fn scan_token(&mut self) {
@@ -129,6 +156,8 @@ impl Scanner {
             _ => {
                 if c.is_numeric() {
                     self.number();
+                } else if c.is_alphabetic() {
+                    self.identifier();
                 } else {
                     self.error_reporter
                         .error(self.line, "Unexpected character.");
@@ -138,11 +167,7 @@ impl Scanner {
     }
 
     fn match_token(&mut self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        // TODO use peek here?
-        if self.source.chars().nth(self.current).unwrap() != expected {
+        if self.is_at_end() || self.peek() != expected {
             return false;
         }
         self.current += 1;
@@ -192,14 +217,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_scanner() {
-        let source = String::from("123");
+    fn test_scanner_simple() {
+        let source = String::from("print \"hello\";");
         let mut scanner = Scanner::new(source);
         scanner.scan_tokens();
 
-        assert_eq!(scanner.tokens.len(), 2);
+        assert_eq!(scanner.tokens.len(), 4);
+        assert_eq!(scanner.tokens[0].token_type, TokenType::Print);
+        assert_eq!(
+            scanner.tokens[1].literal,
+            Some(Literal::String("hello".to_string()))
+        );
+        assert_eq!(scanner.tokens[2].token_type, TokenType::Semicolon);
+        assert_eq!(scanner.tokens[3].token_type, TokenType::Eof);
+    }
+
+    #[test]
+    fn test_scanner_binary() {
+        let source = String::from("1 != 2;");
+        let mut scanner = Scanner::new(source);
+        scanner.scan_tokens();
+
+        assert_eq!(scanner.tokens.len(), 5);
         assert_eq!(scanner.tokens[0].token_type, TokenType::Number);
-        assert_eq!(scanner.tokens[0].literal, Some(Literal::Number(123.0)));
-        assert_eq!(scanner.tokens[1].token_type, TokenType::Eof);
+        assert_eq!(scanner.tokens[1].token_type, TokenType::BangEqual);
+        assert_eq!(scanner.tokens[2].token_type, TokenType::Number);
     }
 }

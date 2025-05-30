@@ -9,6 +9,7 @@ mod scanner;
 mod tokens;
 
 use error_reporter::ErrorReporter;
+use scanner::Scanner;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -25,30 +26,31 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn run_file(path: &Path) -> Result<(), io::Error> {
     let contents = std::fs::read_to_string(path)?;
-    run(&contents);
+    run(contents);
     Ok(())
 }
 
 fn run_prompt() -> Result<(), io::Error> {
-    let mut line = String::new();
     loop {
+        let mut line = String::new();
         print!("> ");
         io::stdout().flush()?;
         io::stdin().read_line(&mut line)?;
-        run(&line);
         if line.trim().is_empty() {
             break;
         }
-        line.clear();
+        run(line);
     }
     Ok(())
 }
 
-fn run(source: &str) {
-    print!("{}", source);
+fn run(source: String) {
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+    check_errors(&scanner.error_reporter);
+    tokens.iter().for_each(|token| println!("{}", token));
 }
 
-#[allow(dead_code)]
 fn check_errors(error_reporter: &ErrorReporter) {
     if error_reporter.had_error {
         exit(65);
