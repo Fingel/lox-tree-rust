@@ -175,11 +175,18 @@ impl Scanner {
         true
     }
 
+    fn char_at(&self, index: usize) -> char {
+        self.source
+            .chars()
+            .nth(index)
+            .expect("Tried to scan past the end of source string!")
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() {
             '\0'
         } else {
-            self.source.chars().nth(self.current).unwrap()
+            self.char_at(self.current)
         }
     }
 
@@ -187,7 +194,7 @@ impl Scanner {
         if self.current + 1 >= self.source.len() {
             '\0'
         } else {
-            self.source.chars().nth(self.current + 1).unwrap()
+            self.char_at(self.current + 1)
         }
     }
 
@@ -196,7 +203,7 @@ impl Scanner {
     }
 
     fn advance(&mut self) -> char {
-        let c = self.source.chars().nth(self.current).unwrap();
+        let c = self.char_at(self.current);
         self.current += 1;
         c
     }
