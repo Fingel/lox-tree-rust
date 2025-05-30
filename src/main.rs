@@ -4,9 +4,11 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
-use error_reporter::ErrorReporter;
-
 mod error_reporter;
+mod scanner;
+mod tokens;
+
+use error_reporter::ErrorReporter;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();

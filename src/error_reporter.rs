@@ -1,10 +1,13 @@
-#[derive(Default)]
 pub struct ErrorReporter {
     pub had_error: bool,
 }
 
 #[allow(dead_code)]
 impl ErrorReporter {
+    pub fn new() -> Self {
+        ErrorReporter { had_error: false }
+    }
+
     pub fn error(&mut self, line: u32, message: &str) {
         self.report(line, "", message);
     }
