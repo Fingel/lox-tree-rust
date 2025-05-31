@@ -1,36 +1,23 @@
-use crate::tokens::{Literal, Token, TokenType};
+use crate::tokens::{Literal, Token};
 use std::fmt;
 
+#[allow(dead_code)]
 pub enum Expr {
-    // TODO see what this looks like with tuples instead of structs
-    Binary {
-        left: Box<Expr>,
-        operator: Token,
-        right: Box<Expr>,
-    },
-    Grouping {
-        expression: Box<Expr>,
-    },
-    Literal {
-        value: Literal,
-    },
-    Unary {
-        operator: Token,
-        right: Box<Expr>,
-    },
+    Binary(Box<Expr>, Token, Box<Expr>),
+    Grouping(Box<Expr>),
+    Literal(Literal),
+    Unary(Token, Box<Expr>),
 }
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::Binary {
-                left,
-                operator,
-                right,
-            } => write!(f, "{}", parenthesize(&operator.lexeme, &[left, right])),
-            Expr::Grouping { expression } => write!(f, "{}", parenthesize("group", &[expression])),
-            Expr::Literal { value } => write!(f, "{}", value),
-            Expr::Unary { operator, right } => {
+            Expr::Binary(left, operator, right) => {
+                write!(f, "{}", parenthesize(&operator.lexeme, &[left, right]))
+            }
+            Expr::Grouping(expression) => write!(f, "{}", parenthesize("group", &[expression])),
+            Expr::Literal(value) => write!(f, "{}", value),
+            Expr::Unary(operator, right) => {
                 write!(f, "{}", parenthesize(&operator.lexeme, &[right]))
             }
         }
@@ -51,37 +38,30 @@ fn parenthesize(name: &str, expressions: &[&Expr]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tokens::TokenType;
 
     #[test]
     fn test_simple_expr() {
-        let expr = Expr::Binary {
-            left: Box::new(Expr::Literal {
-                value: Literal::Number(1.0),
-            }),
-            operator: Token::new(TokenType::Plus, "+".to_string(), None, 1),
-            right: Box::new(Expr::Literal {
-                value: Literal::Number(2.0),
-            }),
-        };
+        let expr = Expr::Binary(
+            Box::new(Expr::Literal(Literal::Number(1.0))),
+            Token::new(TokenType::Plus, "+".to_string(), None, 1),
+            Box::new(Expr::Literal(Literal::Number(2.0))),
+        );
         assert_eq!(format!("{}", expr), "(+ 1 2)");
     }
 
     #[test]
     fn test_book_expr() {
-        let expr = Expr::Binary {
-            left: Box::new(Expr::Unary {
-                operator: Token::new(TokenType::Minus, "-".to_string(), None, 1),
-                right: Box::new(Expr::Literal {
-                    value: Literal::Number(123.0),
-                }),
-            }),
-            operator: Token::new(TokenType::Star, "*".to_string(), None, 1),
-            right: Box::new(Expr::Grouping {
-                expression: Box::new(Expr::Literal {
-                    value: Literal::Number(45.67),
-                }),
-            }),
-        };
+        let expr = Expr::Binary(
+            Box::new(Expr::Unary(
+                Token::new(TokenType::Minus, "-".to_string(), None, 1),
+                Box::new(Expr::Literal(Literal::Number(123.0))),
+            )),
+            Token::new(TokenType::Star, "*".to_string(), None, 1),
+            Box::new(Expr::Grouping(Box::new(Expr::Literal(Literal::Number(
+                45.67,
+            ))))),
+        );
         assert_eq!(format!("{}", expr), "(* (- 123) (group 45.67))");
     }
 }
