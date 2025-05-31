@@ -5,6 +5,7 @@ use std::path::Path;
 use std::process::exit;
 
 mod error_reporter;
+mod expressions;
 mod scanner;
 mod tokens;
 
