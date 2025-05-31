@@ -20,17 +20,19 @@ pub enum Expr {
     },
 }
 
-impl Expr {
-    pub fn print(&self) -> String {
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Binary {
                 left,
                 operator,
                 right,
-            } => parenthesize(&operator.lexeme, &[left, right]),
-            Expr::Grouping { expression } => parenthesize("group", &[expression]),
-            Expr::Literal { value } => format!("{}", value),
-            Expr::Unary { operator, right } => parenthesize(&operator.lexeme, &[right]),
+            } => write!(f, "{}", parenthesize(&operator.lexeme, &[left, right])),
+            Expr::Grouping { expression } => write!(f, "{}", parenthesize("group", &[expression])),
+            Expr::Literal { value } => write!(f, "{}", value),
+            Expr::Unary { operator, right } => {
+                write!(f, "{}", parenthesize(&operator.lexeme, &[right]))
+            }
         }
     }
 }
@@ -40,7 +42,7 @@ fn parenthesize(name: &str, expressions: &[&Expr]) -> String {
     result.push_str(&format!("({}", name));
     for expr in expressions.iter() {
         result.push(' ');
-        result.push_str(&expr.print())
+        result.push_str(&format!("{}", expr));
     }
     result.push(')');
     result
@@ -61,7 +63,7 @@ mod tests {
                 value: Literal::Number(2.0),
             }),
         };
-        assert_eq!(expr.print(), "(+ 1 2)");
+        assert_eq!(format!("{}", expr), "(+ 1 2)");
     }
 
     #[test]
@@ -80,6 +82,6 @@ mod tests {
                 }),
             }),
         };
-        assert_eq!(expr.print(), "(* (- 123) (group 45.67))");
+        assert_eq!(format!("{}", expr), "(* (- 123) (group 45.67))");
     }
 }
