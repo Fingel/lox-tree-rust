@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[rustfmt::skip]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum TokenType {
 
     // Single character tokens
@@ -26,6 +26,7 @@ pub enum TokenType {
 pub enum Literal {
     String(String),
     Number(f64),
+    Nil,
     #[allow(dead_code)]
     Boolean(bool),
 }
@@ -36,6 +37,7 @@ impl fmt::Display for Literal {
             Literal::String(s) => write!(f, "\"{}\"", s),
             Literal::Number(n) => write!(f, "{}", n),
             Literal::Boolean(b) => write!(f, "{}", b),
+            Literal::Nil => write!(f, "nil"),
         }
     }
 }

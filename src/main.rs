@@ -6,10 +6,12 @@ use std::process::exit;
 
 mod error_reporter;
 mod expressions;
+mod parser;
 mod scanner;
 mod tokens;
 
 use error_reporter::ErrorReporter;
+use parser::Parser;
 use scanner::Scanner;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -49,7 +51,13 @@ fn run(source: String) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
     check_errors(&scanner.error_reporter);
-    tokens.iter().for_each(|token| println!("{}", token));
+    let mut parser = Parser::new(tokens);
+    let expr = parser.parse();
+    check_errors(&parser.error_reporter);
+    match expr {
+        Some(expr) => println!("{}", expr),
+        None => println!("There was a parse error."),
+    }
 }
 
 fn check_errors(error_reporter: &ErrorReporter) {
