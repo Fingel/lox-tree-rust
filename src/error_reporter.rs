@@ -1,16 +1,26 @@
+use crate::interpreter::RuntimeError;
 use crate::tokens::{Token, TokenType};
 
 pub struct ErrorReporter {
     pub had_error: bool,
+    pub had_runtime_error: bool,
 }
 
 impl ErrorReporter {
     pub fn new() -> Self {
-        ErrorReporter { had_error: false }
+        ErrorReporter {
+            had_error: false,
+            had_runtime_error: false,
+        }
     }
 
     pub fn error(&mut self, line: u32, message: &str) {
         self.report(line, "", message);
+    }
+
+    pub fn runtime_error(&mut self, error: RuntimeError) {
+        eprintln!("{} \n[line {} ]", error.message, error.token.line);
+        self.had_runtime_error = true;
     }
 
     pub fn error_at_token(&mut self, token: &Token, message: &str) {

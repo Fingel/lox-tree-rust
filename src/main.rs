@@ -6,11 +6,13 @@ use std::process::exit;
 
 mod error_reporter;
 mod expressions;
+mod interpreter;
 mod parser;
 mod scanner;
 mod tokens;
 
 use error_reporter::ErrorReporter;
+use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
 
@@ -52,12 +54,11 @@ fn run(source: String) {
     let tokens = scanner.scan_tokens();
     check_errors(&scanner.error_reporter);
     let mut parser = Parser::new(tokens);
-    let expr = parser.parse();
+    let expr = parser.parse().unwrap();
     check_errors(&parser.error_reporter);
-    match expr {
-        Some(expr) => println!("{}", expr),
-        None => println!("There was a parse error."),
-    }
+    let mut interpreter = Interpreter::new();
+    interpreter.interpret(&expr);
+    check_errors(&interpreter.error_reporter);
 }
 
 fn check_errors(error_reporter: &ErrorReporter) {
