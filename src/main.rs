@@ -54,15 +54,19 @@ fn run(source: String) {
     let tokens = scanner.scan_tokens();
     check_errors(&scanner.error_reporter);
     let mut parser = Parser::new(tokens);
-    let expr = parser.parse().unwrap();
-    check_errors(&parser.error_reporter);
-    let mut interpreter = Interpreter::new();
-    interpreter.interpret(&expr);
-    check_errors(&interpreter.error_reporter);
+    if let Some(expr) = parser.parse() {
+        check_errors(&parser.error_reporter);
+        let mut interpreter = Interpreter::new();
+        interpreter.interpret(&expr);
+        check_errors(&interpreter.error_reporter);
+    }
 }
 
 fn check_errors(error_reporter: &ErrorReporter) {
     if error_reporter.had_error {
         exit(65);
+    }
+    if error_reporter.had_runtime_error {
+        exit(70);
     }
 }

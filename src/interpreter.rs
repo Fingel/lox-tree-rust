@@ -84,7 +84,10 @@ impl Interpreter {
             }
             TokenType::BangEqual => Ok(Literal::Boolean(!self.is_equal(&left, &right))),
             TokenType::EqualEqual => Ok(Literal::Boolean(self.is_equal(&left, &right))),
-            _ => unreachable!("Didn't handle all token types"),
+            _ => Err(RuntimeError {
+                message: "Unhandled token type".to_string(),
+                token: op.clone(),
+            }),
         }
     }
 
@@ -96,7 +99,10 @@ impl Interpreter {
                 Ok(Literal::Number(-right_num))
             }
             TokenType::Bang => Ok(Literal::Boolean(!self.is_truthy(&right))),
-            _ => unreachable!("fuck"),
+            _ => Err(RuntimeError {
+                message: "Invalid operator".to_string(),
+                token: operator.clone(),
+            }),
         }
     }
 

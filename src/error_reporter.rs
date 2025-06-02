@@ -19,7 +19,7 @@ impl ErrorReporter {
     }
 
     pub fn runtime_error(&mut self, error: RuntimeError) {
-        eprintln!("{} \n[line {} ]", error.message, error.token.line);
+        eprintln!("{} \n[line {}]", error.message, error.token.line);
         self.had_runtime_error = true;
     }
 
