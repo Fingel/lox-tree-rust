@@ -1,7 +1,6 @@
 use crate::tokens::{Object, Token};
 use std::fmt;
 
-#[allow(dead_code)]
 pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),

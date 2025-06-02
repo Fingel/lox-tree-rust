@@ -27,7 +27,6 @@ pub enum Object {
     String(String),
     Number(f64),
     Nil,
-    #[allow(dead_code)]
     Boolean(bool),
 }
 
@@ -47,7 +46,6 @@ pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub literal: Option<Object>,
-    #[allow(dead_code)]
     pub line: u32,
 }
 
