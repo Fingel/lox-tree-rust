@@ -1,6 +1,6 @@
 use crate::error_reporter::ErrorReporter;
 use crate::expressions::Expr;
-use crate::tokens::{Literal, Token, TokenType};
+use crate::tokens::{Object, Token, TokenType};
 
 #[derive(Debug)]
 struct ParseError;
@@ -85,13 +85,13 @@ impl Parser {
 
     fn primary(&mut self) -> Result<Expr, ParseError> {
         if self.match_token(&[TokenType::False]) {
-            return Ok(Expr::Literal(Literal::Boolean(false)));
+            return Ok(Expr::Literal(Object::Boolean(false)));
         }
         if self.match_token(&[TokenType::True]) {
-            return Ok(Expr::Literal(Literal::Boolean(true)));
+            return Ok(Expr::Literal(Object::Boolean(true)));
         }
         if self.match_token(&[TokenType::Nil]) {
-            return Ok(Expr::Literal(Literal::Nil));
+            return Ok(Expr::Literal(Object::Nil));
         }
         if self.match_token(&[TokenType::Number, TokenType::String]) {
             return Ok(Expr::Literal(self.previous().literal.clone().unwrap()));
@@ -192,7 +192,7 @@ mod tests {
             Token::new(
                 TokenType::Number,
                 "1.0".to_string(),
-                Some(Literal::Number(1.0)),
+                Some(Object::Number(1.0)),
                 1,
             ),
             Token::new(TokenType::Plus, "+".to_string(), None, 1),
@@ -200,14 +200,14 @@ mod tests {
             Token::new(
                 TokenType::Number,
                 "2.0".to_string(),
-                Some(Literal::Number(2.0)),
+                Some(Object::Number(2.0)),
                 1,
             ),
             Token::new(TokenType::Star, "*".to_string(), None, 1),
             Token::new(
                 TokenType::Number,
                 "3.0".to_string(),
-                Some(Literal::Number(3.0)),
+                Some(Object::Number(3.0)),
                 1,
             ),
             Token::new(TokenType::RightParen, ")".to_string(), None, 1),
@@ -217,12 +217,12 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let expr = parser.parse().unwrap();
         let expected = Expr::Binary(
-            Box::new(Expr::Literal(Literal::Number(1.0))),
+            Box::new(Expr::Literal(Object::Number(1.0))),
             Token::new(TokenType::Plus, "+".to_string(), None, 1),
             Box::new(Expr::Grouping(Box::new(Expr::Binary(
-                Box::new(Expr::Literal(Literal::Number(2.0))),
+                Box::new(Expr::Literal(Object::Number(2.0))),
                 Token::new(TokenType::Star, "*".to_string(), None, 1),
-                Box::new(Expr::Literal(Literal::Number(3.0))),
+                Box::new(Expr::Literal(Object::Number(3.0))),
             )))),
         );
         assert_eq!(format!("{}", expr), format!("{}", expected));

@@ -23,7 +23,7 @@ pub enum TokenType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Literal {
+pub enum Object {
     String(String),
     Number(f64),
     Nil,
@@ -31,13 +31,13 @@ pub enum Literal {
     Boolean(bool),
 }
 
-impl fmt::Display for Literal {
+impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Literal::String(s) => write!(f, "\"{}\"", s),
-            Literal::Number(n) => write!(f, "{}", n),
-            Literal::Boolean(b) => write!(f, "{}", b),
-            Literal::Nil => write!(f, "nil"),
+            Object::String(s) => write!(f, "\"{}\"", s),
+            Object::Number(n) => write!(f, "{}", n),
+            Object::Boolean(b) => write!(f, "{}", b),
+            Object::Nil => write!(f, "nil"),
         }
     }
 }
@@ -46,13 +46,13 @@ impl fmt::Display for Literal {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub literal: Option<Literal>,
+    pub literal: Option<Object>,
     #[allow(dead_code)]
     pub line: u32,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, literal: Option<Literal>, line: u32) -> Self {
+    pub fn new(token_type: TokenType, lexeme: String, literal: Option<Object>, line: u32) -> Self {
         Token {
             token_type,
             lexeme,

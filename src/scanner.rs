@@ -1,6 +1,6 @@
 use crate::{
     error_reporter::ErrorReporter,
-    tokens::{Literal, Token, TokenType},
+    tokens::{Object, Token, TokenType},
 };
 
 pub struct Scanner {
@@ -52,7 +52,7 @@ impl Scanner {
         let value = self.source[self.start..self.current]
             .parse::<f64>()
             .unwrap();
-        self.add_literal_token(TokenType::Number, Some(Literal::Number(value)));
+        self.add_literal_token(TokenType::Number, Some(Object::Number(value)));
     }
 
     fn string(&mut self) {
@@ -70,7 +70,7 @@ impl Scanner {
 
         // Trim the surrounding quotes
         let value = self.source[self.start + 1..self.current - 1].to_string();
-        self.add_literal_token(TokenType::String, Some(Literal::String(value)));
+        self.add_literal_token(TokenType::String, Some(Object::String(value)));
     }
 
     fn identifier(&mut self) {
@@ -212,7 +212,7 @@ impl Scanner {
         self.add_literal_token(token_type, None);
     }
 
-    fn add_literal_token(&mut self, token_type: TokenType, literal: Option<Literal>) {
+    fn add_literal_token(&mut self, token_type: TokenType, literal: Option<Object>) {
         let text = self.source[self.start..self.current].to_string();
         let token = Token::new(token_type, text, literal, self.line);
         self.tokens.push(token);
@@ -233,7 +233,7 @@ mod tests {
         assert_eq!(scanner.tokens[0].token_type, TokenType::Print);
         assert_eq!(
             scanner.tokens[1].literal,
-            Some(Literal::String("hello".to_string()))
+            Some(Object::String("hello".to_string()))
         );
         assert_eq!(scanner.tokens[2].token_type, TokenType::Semicolon);
         assert_eq!(scanner.tokens[3].token_type, TokenType::Eof);

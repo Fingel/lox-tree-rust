@@ -1,11 +1,11 @@
-use crate::tokens::{Literal, Token};
+use crate::tokens::{Object, Token};
 use std::fmt;
 
 #[allow(dead_code)]
 pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
-    Literal(Literal),
+    Literal(Object),
     Unary(Token, Box<Expr>),
 }
 
@@ -43,9 +43,9 @@ mod tests {
     #[test]
     fn test_simple_expr() {
         let expr = Expr::Binary(
-            Box::new(Expr::Literal(Literal::Number(1.0))),
+            Box::new(Expr::Literal(Object::Number(1.0))),
             Token::new(TokenType::Plus, "+".to_string(), None, 1),
-            Box::new(Expr::Literal(Literal::Number(2.0))),
+            Box::new(Expr::Literal(Object::Number(2.0))),
         );
         assert_eq!(format!("{}", expr), "(+ 1 2)");
     }
@@ -55,10 +55,10 @@ mod tests {
         let expr = Expr::Binary(
             Box::new(Expr::Unary(
                 Token::new(TokenType::Minus, "-".to_string(), None, 1),
-                Box::new(Expr::Literal(Literal::Number(123.0))),
+                Box::new(Expr::Literal(Object::Number(123.0))),
             )),
             Token::new(TokenType::Star, "*".to_string(), None, 1),
-            Box::new(Expr::Grouping(Box::new(Expr::Literal(Literal::Number(
+            Box::new(Expr::Grouping(Box::new(Expr::Literal(Object::Number(
                 45.67,
             ))))),
         );
