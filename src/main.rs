@@ -9,6 +9,7 @@ mod expressions;
 mod interpreter;
 mod parser;
 mod scanner;
+mod statements;
 mod tokens;
 
 use error_reporter::ErrorReporter;
@@ -54,12 +55,11 @@ fn run(source: String) {
     let tokens = scanner.scan_tokens();
     check_errors(&scanner.error_reporter);
     let mut parser = Parser::new(tokens);
-    if let Some(expr) = parser.parse() {
-        check_errors(&parser.error_reporter);
-        let mut interpreter = Interpreter::new();
-        interpreter.interpret(&expr);
-        check_errors(&interpreter.error_reporter);
-    }
+    let statements = parser.parse();
+    check_errors(&parser.error_reporter);
+    let mut interpreter = Interpreter::new();
+    interpreter.interpret(statements);
+    check_errors(&interpreter.error_reporter);
 }
 
 fn check_errors(error_reporter: &ErrorReporter) {

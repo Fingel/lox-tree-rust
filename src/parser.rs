@@ -1,5 +1,6 @@
 use crate::error_reporter::ErrorReporter;
 use crate::expressions::Expr;
+use crate::statements::Stmt;
 use crate::tokens::{Object, Token, TokenType};
 
 #[derive(Debug)]
@@ -20,12 +21,36 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        self.expression().ok()
+    pub fn parse(&mut self) -> Vec<Stmt> {
+        let mut statements: Vec<Stmt> = Vec::new();
+        while !self.is_at_end() {
+            statements.push(self.statement().unwrap())
+        }
+        statements
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
         self.equality()
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_token(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Print(Box::new(value)))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Expression(Box::new(expr)))
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
@@ -212,11 +237,12 @@ mod tests {
             ),
             Token::new(TokenType::RightParen, ")".to_string(), None, 1),
             Token::new(TokenType::Semicolon, ";".to_string(), None, 1),
+            Token::new(TokenType::Eof, "".to_string(), None, 1),
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse().unwrap();
-        let expected = Expr::Binary(
+        let statements = parser.parse();
+        let expected = Stmt::Expression(Box::new(Expr::Binary(
             Box::new(Expr::Literal(Object::Number(1.0))),
             Token::new(TokenType::Plus, "+".to_string(), None, 1),
             Box::new(Expr::Grouping(Box::new(Expr::Binary(
@@ -224,7 +250,7 @@ mod tests {
                 Token::new(TokenType::Star, "*".to_string(), None, 1),
                 Box::new(Expr::Literal(Object::Number(3.0))),
             )))),
-        );
-        assert_eq!(format!("{}", expr), format!("{}", expected));
+        )));
+        assert_eq!(statements[0], expected);
     }
 }

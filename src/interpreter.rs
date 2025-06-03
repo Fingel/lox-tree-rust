@@ -1,5 +1,6 @@
 use crate::error_reporter::ErrorReporter;
 use crate::expressions::Expr;
+use crate::statements::Stmt;
 use crate::tokens::{Object, Token, TokenType};
 
 #[derive(Debug)]
@@ -18,12 +19,28 @@ impl Interpreter {
             error_reporter: ErrorReporter::new(),
         }
     }
-    pub fn interpret(&mut self, expr: &Expr) {
-        match self.evaluate(expr) {
-            Ok(object) => println!("{}", object),
-            Err(error) => self.error_reporter.runtime_error(error),
+    pub fn interpret(&mut self, statements: Vec<Stmt>) {
+        for statement in statements {
+            if let Err(err) = self.execute(&statement) {
+                self.error_reporter.runtime_error(err);
+            }
         }
     }
+
+    fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeError> {
+        match stmt {
+            Stmt::Print(expr) => {
+                let value = self.evaluate(expr)?;
+                println!("{}", value);
+                Ok(())
+            }
+            Stmt::Expression(expr) => {
+                self.evaluate(expr)?;
+                Ok(())
+            }
+        }
+    }
+
     fn evaluate(&self, expr: &Expr) -> Result<Object, RuntimeError> {
         match expr {
             Expr::Literal(literal) => Ok(literal.clone()),
