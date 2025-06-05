@@ -1,3 +1,4 @@
+use crate::environment::Environment;
 use crate::error_reporter::ErrorReporter;
 use crate::expressions::Expr;
 use crate::statements::Stmt;
@@ -11,12 +12,14 @@ pub struct RuntimeError {
 
 pub struct Interpreter {
     pub error_reporter: ErrorReporter,
+    environment: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
             error_reporter: ErrorReporter::new(),
+            environment: Environment::new(),
         }
     }
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
@@ -27,7 +30,7 @@ impl Interpreter {
         }
     }
 
-    fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
         match stmt {
             Stmt::Print(expr) => {
                 let value = self.evaluate(expr)?;
@@ -38,20 +41,37 @@ impl Interpreter {
                 self.evaluate(expr)?;
                 Ok(())
             }
+            Stmt::Var(name, initializer) => {
+                let value = if let Some(initializer) = initializer.as_ref() {
+                    self.evaluate(initializer)?
+                } else {
+                    Object::Nil
+                };
+                self.environment.define(name.lexeme.clone(), value);
+                Ok(())
+            }
         }
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Object, RuntimeError> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Object, RuntimeError> {
         match expr {
             Expr::Literal(literal) => Ok(literal.clone()),
             Expr::Grouping(expr) => self.evaluate(expr),
             Expr::Unary(op, right) => Ok(self.evaluate_unary(op, right)?),
             Expr::Binary(left, op, right) => Ok(self.evaluate_binary(left, op, right)?),
+            Expr::Variable(name) => self.environment.get(name),
+            Expr::Assignment(name, value) => self.evaluate_assignment(name, value),
         }
     }
 
+    fn evaluate_assignment(&mut self, name: &Token, value: &Expr) -> Result<Object, RuntimeError> {
+        let value = self.evaluate(value)?;
+        self.environment.assign(name, value.clone())?;
+        Ok(value)
+    }
+
     fn evaluate_binary(
-        &self,
+        &mut self,
         left: &Expr,
         op: &Token,
         right: &Expr,
@@ -106,7 +126,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_unary(&self, operator: &Token, right: &Expr) -> Result<Object, RuntimeError> {
+    fn evaluate_unary(&mut self, operator: &Token, right: &Expr) -> Result<Object, RuntimeError> {
         let right = self.evaluate(right)?;
         match operator.token_type {
             TokenType::Minus => {
@@ -175,7 +195,7 @@ mod tests {
     #[test]
     fn test_interpret_addition() {
         // 1 + 2
-        let interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new();
         assert_eq!(
             interpreter
                 .evaluate(&Expr::Binary(
@@ -190,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_equality() {
-        let interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new();
         assert_eq!(
             interpreter
                 .evaluate(&Expr::Binary(

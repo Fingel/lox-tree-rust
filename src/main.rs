@@ -4,6 +4,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
+mod environment;
 mod error_reporter;
 mod expressions;
 mod interpreter;

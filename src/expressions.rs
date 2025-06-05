@@ -3,10 +3,12 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
     Literal(Object),
-    Unary(Token, Box<Expr>),
+    Variable(Token),
+    Assignment(Token, Box<Expr>),
 }
 
 impl fmt::Display for Expr {
@@ -20,6 +22,8 @@ impl fmt::Display for Expr {
             Expr::Unary(operator, right) => {
                 write!(f, "{}", parenthesize(&operator.lexeme, &[right]))
             }
+            Expr::Variable(token) => write!(f, "{}", token.lexeme),
+            Expr::Assignment(token, expr) => write!(f, "{} = {}", &token.lexeme, expr),
         }
     }
 }
