@@ -31,8 +31,8 @@ impl Environment {
     }
 
     pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), RuntimeError> {
-        if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.clone(), value);
+        if let Some(existing_value) = self.values.get_mut(&name.lexeme) {
+            *existing_value = value;
             Ok(())
         } else {
             Err(RuntimeError {
