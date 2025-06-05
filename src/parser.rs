@@ -97,9 +97,7 @@ impl Parser {
 
             match expr {
                 Expr::Variable(name) => return Ok(Expr::Assignment(name, Box::new(value))),
-                _ => self
-                    .error_reporter
-                    .error_at_token(&equals, "Invalid assignment target."),
+                _ => _ = self.error(&equals, "Invalid assignment target"),
             };
         }
 

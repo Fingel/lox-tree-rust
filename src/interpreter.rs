@@ -32,45 +32,66 @@ impl Interpreter {
 
     fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
         match stmt {
-            Stmt::Print(expr) => {
-                let value = self.evaluate(expr)?;
-                println!("{}", value);
-                Ok(())
-            }
-            Stmt::Expression(expr) => {
-                self.evaluate(expr)?;
-                Ok(())
-            }
-            Stmt::Var(name, initializer) => {
-                let value = if let Some(initializer) = initializer.as_ref() {
-                    self.evaluate(initializer)?
-                } else {
-                    Object::Nil
-                };
-                self.environment.define(name.lexeme.clone(), value);
-                Ok(())
-            }
+            // these map the "visit<type>Stmt" functions from the book
+            Stmt::Print(expr) => self.execute_print_statement(expr),
+            Stmt::Expression(expr) => self.execute_expression_statement(expr),
+            Stmt::Var(name, initializer) => self.execute_var_statement(name, initializer),
         }
+    }
+
+    // visitExpressionStmt
+    fn execute_expression_statement(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
+        self.evaluate(expr)?;
+        Ok(())
+    }
+
+    // visitPrintStmt
+    fn execute_print_statement(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
+        let value = self.evaluate(expr)?;
+        println!("{}", value);
+        Ok(())
+    }
+
+    // visitVarStmt
+    fn execute_var_statement(
+        &mut self,
+        name: &Token,
+        initializer: &Option<Expr>,
+    ) -> Result<(), RuntimeError> {
+        let value = if let Some(initializer) = initializer.as_ref() {
+            self.evaluate(initializer)?
+        } else {
+            Object::Nil
+        };
+        self.environment.define(name.lexeme.clone(), value);
+        Ok(())
     }
 
     fn evaluate(&mut self, expr: &Expr) -> Result<Object, RuntimeError> {
         match expr {
-            Expr::Literal(literal) => Ok(literal.clone()),
-            Expr::Grouping(expr) => self.evaluate(expr),
-            Expr::Unary(op, right) => Ok(self.evaluate_unary(op, right)?),
-            Expr::Binary(left, op, right) => Ok(self.evaluate_binary(left, op, right)?),
-            Expr::Variable(name) => self.environment.get(name),
-            Expr::Assignment(name, value) => self.evaluate_assignment(name, value),
+            // These map the "visit<type>Expr" methods from the book
+            Expr::Literal(literal) => self.evaluate_literal_expr(literal),
+            Expr::Grouping(expr) => self.evaluate_grouping_expr(expr),
+            Expr::Unary(op, right) => self.evaluate_unary_expr(op, right),
+            Expr::Binary(left, op, right) => self.evaluate_binary_expr(left, op, right),
+            Expr::Variable(name) => self.evaluate_variable_expr(name),
+            Expr::Assignment(name, value) => self.evaluate_assignment_expr(name, value),
         }
     }
 
-    fn evaluate_assignment(&mut self, name: &Token, value: &Expr) -> Result<Object, RuntimeError> {
+    // visitAssignmentExpr
+    fn evaluate_assignment_expr(
+        &mut self,
+        name: &Token,
+        value: &Expr,
+    ) -> Result<Object, RuntimeError> {
         let value = self.evaluate(value)?;
         self.environment.assign(name, value.clone())?;
         Ok(value)
     }
 
-    fn evaluate_binary(
+    //visitBinaryExpr
+    fn evaluate_binary_expr(
         &mut self,
         left: &Expr,
         op: &Token,
@@ -126,7 +147,22 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_unary(&mut self, operator: &Token, right: &Expr) -> Result<Object, RuntimeError> {
+    // visitGroupingExpr
+    fn evaluate_grouping_expr(&mut self, expr: &Expr) -> Result<Object, RuntimeError> {
+        self.evaluate(expr)
+    }
+
+    // visitLiteralExpr
+    fn evaluate_literal_expr(&mut self, literal: &Object) -> Result<Object, RuntimeError> {
+        Ok(literal.clone())
+    }
+
+    // visitUnaryExpr
+    fn evaluate_unary_expr(
+        &mut self,
+        operator: &Token,
+        right: &Expr,
+    ) -> Result<Object, RuntimeError> {
         let right = self.evaluate(right)?;
         match operator.token_type {
             TokenType::Minus => {
@@ -139,6 +175,11 @@ impl Interpreter {
                 token: operator.clone(),
             }),
         }
+    }
+
+    // visitVariableExpr
+    fn evaluate_variable_expr(&mut self, name: &Token) -> Result<Object, RuntimeError> {
+        self.environment.get(name)
     }
 
     fn check_number_operand(
@@ -154,6 +195,7 @@ impl Interpreter {
             }),
         }
     }
+
     fn check_number_operands(
         &self,
         op: &Token,
