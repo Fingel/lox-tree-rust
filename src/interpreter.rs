@@ -264,4 +264,59 @@ mod tests {
             Object::Boolean(true)
         );
     }
+
+    #[test]
+    fn test_interpret_variable_declaration_and_usage() {
+        let mut interpreter = Interpreter::new();
+        let var_name = Token::new(TokenType::Identifier, "test_var".to_string(), None, 1);
+
+        let statements = vec![
+            // var test_var = 123;
+            Stmt::Var(
+                var_name.clone(),
+                Box::new(Some(Expr::Literal(Object::Number(123.0)))),
+            ),
+            // print test_var;
+            Stmt::Print(Box::new(Expr::Variable(var_name.clone()))),
+        ];
+
+        interpreter.interpret(statements);
+
+        // Should not have any errors
+        assert!(!interpreter.error_reporter.had_runtime_error);
+        // Variable should exist in environment
+        assert_eq!(
+            interpreter.environment.get(&var_name).unwrap(),
+            Object::Number(123.0)
+        );
+    }
+
+    #[test]
+    fn test_interpret_variable_reassignment() {
+        let mut interpreter = Interpreter::new();
+        let var_name = Token::new(TokenType::Identifier, "test_var".to_string(), None, 1);
+
+        let statements = vec![
+            // var test_var = 123;
+            Stmt::Var(
+                var_name.clone(),
+                Box::new(Some(Expr::Literal(Object::Number(123.0)))),
+            ),
+            // var test_var = 42;
+            Stmt::Var(
+                var_name.clone(),
+                Box::new(Some(Expr::Literal(Object::Number(42.0)))),
+            ),
+        ];
+
+        interpreter.interpret(statements);
+
+        // Should not have any errors
+        assert!(!interpreter.error_reporter.had_runtime_error);
+        // Variable should exist in environment
+        assert_eq!(
+            interpreter.environment.get(&var_name).unwrap(),
+            Object::Number(42.0)
+        );
+    }
 }
