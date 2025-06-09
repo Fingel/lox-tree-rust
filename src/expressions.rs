@@ -9,6 +9,7 @@ pub enum Expr {
     Literal(Object),
     Variable(Token),
     Assignment(Token, Box<Expr>),
+    Logical(Box<Expr>, Token, Box<Expr>),
 }
 
 impl fmt::Display for Expr {
@@ -24,6 +25,9 @@ impl fmt::Display for Expr {
             }
             Expr::Variable(token) => write!(f, "{}", token.lexeme),
             Expr::Assignment(token, expr) => write!(f, "{} = {}", &token.lexeme, expr),
+            Expr::Logical(left, operator, right) => {
+                write!(f, "{}", parenthesize(&operator.lexeme, &[left, right]))
+            }
         }
     }
 }

@@ -115,6 +115,7 @@ impl Interpreter {
             Expr::Binary(left, op, right) => self.evaluate_binary_expr(left, op, right),
             Expr::Variable(name) => self.evaluate_variable_expr(name),
             Expr::Assignment(name, value) => self.evaluate_assignment_expr(name, value),
+            Expr::Logical(left, op, right) => self.evaluate_logical_expr(left, op, right),
         }
     }
 
@@ -194,6 +195,24 @@ impl Interpreter {
     // visitLiteralExpr
     fn evaluate_literal_expr(&mut self, literal: &Object) -> Result<Object, RuntimeError> {
         Ok(literal.clone())
+    }
+
+    // visitLogicalExpr
+    fn evaluate_logical_expr(
+        &mut self,
+        left: &Expr,
+        op: &Token,
+        right: &Expr,
+    ) -> Result<Object, RuntimeError> {
+        let left_expr = self.evaluate(left)?;
+        if op.token_type == TokenType::Or {
+            if self.is_truthy(&left_expr) {
+                return Ok(left_expr);
+            }
+        } else if !self.is_truthy(&left_expr) {
+            return Ok(left_expr);
+        }
+        self.evaluate(right)
     }
 
     // visitUnaryExpr
