@@ -19,7 +19,7 @@ impl Interpreter {
     pub fn new() -> Self {
         Self {
             error_reporter: ErrorReporter::new(),
-            environment: Environment::new(),
+            environment: Environment::new(None),
         }
     }
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
@@ -36,6 +36,7 @@ impl Interpreter {
             Stmt::Print(expr) => self.execute_print_statement(expr),
             Stmt::Expression(expr) => self.execute_expression_statement(expr),
             Stmt::Var(name, initializer) => self.execute_var_statement(name, initializer),
+            Stmt::Block(statements) => self.execute_block_statement(statements),
         }
     }
 
@@ -49,6 +50,25 @@ impl Interpreter {
     fn execute_print_statement(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
         let value = self.evaluate(expr)?;
         println!("{}", value);
+        Ok(())
+    }
+
+    //visitBlockStmt
+    fn execute_block_statement(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+        let mut new_environment = Environment::new(Some(Box::new(self.environment.clone())));
+        self.execute_block(statements, &mut new_environment)
+    }
+
+    fn execute_block(
+        &mut self,
+        statements: &[Stmt],
+        environment: &mut Environment,
+    ) -> Result<(), RuntimeError> {
+        let previous_environment = std::mem::replace(&mut self.environment, environment.clone());
+        for statement in statements {
+            self.execute(statement)?;
+        }
+        self.environment = previous_environment;
         Ok(())
     }
 
@@ -318,5 +338,81 @@ mod tests {
             interpreter.environment.get(&var_name).unwrap(),
             Object::Number(42.0)
         );
+    }
+
+    #[test]
+    fn test_block_statement_scoping_and_shadowing() {
+        let mut interpreter = Interpreter::new();
+
+        let var_a = Token::new(TokenType::Identifier, "a".to_string(), None, 1);
+        let var_b = Token::new(TokenType::Identifier, "b".to_string(), None, 1);
+
+        let statements = vec![
+            // var a = "global a";
+            Stmt::Var(
+                var_a.clone(),
+                Box::new(Some(Expr::Literal(Object::String("global a".to_string())))),
+            ),
+            // var b = "global b";
+            Stmt::Var(
+                var_b.clone(),
+                Box::new(Some(Expr::Literal(Object::String("global b".to_string())))),
+            ),
+            // {
+            //   var a = "outer a";
+            //   var b = "outer b";
+            // }
+            Stmt::Block(vec![
+                Stmt::Var(
+                    var_a.clone(),
+                    Box::new(Some(Expr::Literal(Object::String("outer a".to_string())))),
+                ),
+                Stmt::Var(
+                    var_b.clone(),
+                    Box::new(Some(Expr::Literal(Object::String("outer b".to_string())))),
+                ),
+            ]),
+        ];
+
+        interpreter.interpret(statements);
+
+        // Should not have any errors
+        assert!(!interpreter.error_reporter.had_runtime_error);
+
+        // After all blocks have closed, variables should have their global values
+        assert_eq!(
+            interpreter.environment.get(&var_a).unwrap(),
+            Object::String("global a".to_string())
+        );
+        assert_eq!(
+            interpreter.environment.get(&var_b).unwrap(),
+            Object::String("global b".to_string())
+        );
+    }
+
+    #[test]
+    fn test_block_scope_isolation() {
+        let mut interpreter = Interpreter::new();
+
+        let var_block_only = Token::new(TokenType::Identifier, "block_only".to_string(), None, 1);
+
+        let statements = vec![
+            // {
+            //   var block_only = "inside block";
+            // }
+            Stmt::Block(vec![Stmt::Var(
+                var_block_only.clone(),
+                Box::new(Some(Expr::Literal(Object::String(
+                    "inside block".to_string(),
+                )))),
+            )]),
+            // Try to access block_only variable outside the block - this should cause an error
+            Stmt::Print(Box::new(Expr::Variable(var_block_only.clone()))),
+        ];
+
+        interpreter.interpret(statements);
+
+        // Should have a runtime error because block_only is not accessible outside the block
+        assert!(interpreter.error_reporter.had_runtime_error);
     }
 }
