@@ -68,7 +68,7 @@ impl Parser {
             .clone();
 
         let initializer = if self.match_token(&[TokenType::Equal]) {
-            Some(self.expression()?)
+            Some(Box::new(self.expression()?))
         } else {
             None
         };
@@ -77,7 +77,7 @@ impl Parser {
             TokenType::Semicolon,
             "Expect ';' after variable declaration.",
         )?;
-        Ok(Stmt::Var(name, Box::new(initializer)))
+        Ok(Stmt::Var(name, initializer))
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParseError> {

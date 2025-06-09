@@ -76,7 +76,7 @@ impl Interpreter {
     fn execute_var_statement(
         &mut self,
         name: &Token,
-        initializer: &Option<Expr>,
+        initializer: &Option<Box<Expr>>,
     ) -> Result<(), RuntimeError> {
         let value = if let Some(initializer) = initializer.as_ref() {
             self.evaluate(initializer)?
@@ -294,7 +294,7 @@ mod tests {
             // var test_var = 123;
             Stmt::Var(
                 var_name.clone(),
-                Box::new(Some(Expr::Literal(Object::Number(123.0)))),
+                Some(Box::new(Expr::Literal(Object::Number(123.0)))),
             ),
             // print test_var;
             Stmt::Print(Box::new(Expr::Variable(var_name.clone()))),
@@ -320,12 +320,12 @@ mod tests {
             // var test_var = 123;
             Stmt::Var(
                 var_name.clone(),
-                Box::new(Some(Expr::Literal(Object::Number(123.0)))),
+                Some(Box::new(Expr::Literal(Object::Number(123.0)))),
             ),
             // var test_var = 42;
             Stmt::Var(
                 var_name.clone(),
-                Box::new(Some(Expr::Literal(Object::Number(42.0)))),
+                Some(Box::new(Expr::Literal(Object::Number(42.0)))),
             ),
         ];
 
@@ -351,12 +351,16 @@ mod tests {
             // var a = "global a";
             Stmt::Var(
                 var_a.clone(),
-                Box::new(Some(Expr::Literal(Object::String("global a".to_string())))),
+                Some(Box::new(Expr::Literal(Object::String(
+                    "global a".to_string(),
+                )))),
             ),
             // var b = "global b";
             Stmt::Var(
                 var_b.clone(),
-                Box::new(Some(Expr::Literal(Object::String("global b".to_string())))),
+                Some(Box::new(Expr::Literal(Object::String(
+                    "global b".to_string(),
+                )))),
             ),
             // {
             //   var a = "outer a";
@@ -365,11 +369,15 @@ mod tests {
             Stmt::Block(vec![
                 Stmt::Var(
                     var_a.clone(),
-                    Box::new(Some(Expr::Literal(Object::String("outer a".to_string())))),
+                    Some(Box::new(Expr::Literal(Object::String(
+                        "outer a".to_string(),
+                    )))),
                 ),
                 Stmt::Var(
                     var_b.clone(),
-                    Box::new(Some(Expr::Literal(Object::String("outer b".to_string())))),
+                    Some(Box::new(Expr::Literal(Object::String(
+                        "outer b".to_string(),
+                    )))),
                 ),
             ]),
         ];
@@ -402,7 +410,7 @@ mod tests {
             // }
             Stmt::Block(vec![Stmt::Var(
                 var_block_only.clone(),
-                Box::new(Some(Expr::Literal(Object::String(
+                Some(Box::new(Expr::Literal(Object::String(
                     "inside block".to_string(),
                 )))),
             )]),
