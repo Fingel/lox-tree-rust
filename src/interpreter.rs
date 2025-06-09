@@ -37,6 +37,9 @@ impl Interpreter {
             Stmt::Expression(expr) => self.execute_expression_statement(expr),
             Stmt::Var(name, initializer) => self.execute_var_statement(name, initializer),
             Stmt::Block(statements) => self.execute_block_statement(statements),
+            Stmt::If(condition, then_branch, else_branch) => {
+                self.execute_if_statement(condition, then_branch, else_branch)
+            }
         }
     }
 
@@ -57,6 +60,22 @@ impl Interpreter {
     fn execute_block_statement(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
         let mut new_environment = Environment::new(Some(Box::new(self.environment.clone())));
         self.execute_block(statements, &mut new_environment)
+    }
+
+    //visitIfStmt
+    fn execute_if_statement(
+        &mut self,
+        condition: &Expr,
+        then_branch: &Stmt,
+        else_branch: &Option<Box<Stmt>>,
+    ) -> Result<(), RuntimeError> {
+        let condition_value = self.evaluate(condition)?;
+        if self.is_truthy(&condition_value) {
+            self.execute(then_branch)?;
+        } else if let Some(else_branch) = else_branch.as_ref() {
+            self.execute(else_branch)?;
+        }
+        Ok(())
     }
 
     fn execute_block(
