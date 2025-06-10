@@ -461,4 +461,72 @@ mod tests {
         // Should have a runtime error because block_only is not accessible outside the block
         assert!(interpreter.error_reporter.had_runtime_error);
     }
+
+    #[test]
+    fn test_logical_and_short_circuit_false() {
+        // Test that "and" short-circuits when left operand is false
+        let mut interpreter = Interpreter::new();
+
+        // false and true should return false without evaluating true
+        let result = interpreter
+            .evaluate(&Expr::Logical(
+                Box::new(Expr::Literal(Object::Boolean(false))),
+                Token::new(TokenType::And, "and".to_string(), None, 1),
+                Box::new(Expr::Literal(Object::Boolean(true))),
+            ))
+            .unwrap();
+
+        assert_eq!(result, Object::Boolean(false));
+    }
+
+    #[test]
+    fn test_logical_and_evaluate_both() {
+        // Test that "and" evaluates right operand when left is truthy
+        let mut interpreter = Interpreter::new();
+
+        // true and false should return false
+        let result = interpreter
+            .evaluate(&Expr::Logical(
+                Box::new(Expr::Literal(Object::Boolean(true))),
+                Token::new(TokenType::And, "and".to_string(), None, 1),
+                Box::new(Expr::Literal(Object::Boolean(false))),
+            ))
+            .unwrap();
+
+        assert_eq!(result, Object::Boolean(false));
+    }
+
+    #[test]
+    fn test_logical_or_short_circuit_true() {
+        // Test that "or" short-circuits when left operand is truthy
+        let mut interpreter = Interpreter::new();
+
+        // true or false should return true without evaluating false
+        let result = interpreter
+            .evaluate(&Expr::Logical(
+                Box::new(Expr::Literal(Object::Boolean(true))),
+                Token::new(TokenType::Or, "or".to_string(), None, 1),
+                Box::new(Expr::Literal(Object::Boolean(false))),
+            ))
+            .unwrap();
+
+        assert_eq!(result, Object::Boolean(true));
+    }
+
+    #[test]
+    fn test_logical_or_evaluate_both() {
+        // Test that "or" evaluates right operand when left is falsy
+        let mut interpreter = Interpreter::new();
+
+        // false or true should return true
+        let result = interpreter
+            .evaluate(&Expr::Logical(
+                Box::new(Expr::Literal(Object::Boolean(false))),
+                Token::new(TokenType::Or, "or".to_string(), None, 1),
+                Box::new(Expr::Literal(Object::Boolean(true))),
+            ))
+            .unwrap();
+
+        assert_eq!(result, Object::Boolean(true));
+    }
 }
