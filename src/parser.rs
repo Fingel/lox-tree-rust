@@ -64,8 +64,58 @@ impl Parser {
         if self.match_token(&[TokenType::While]) {
             return self.while_statement();
         }
+        if self.match_token(&[TokenType::For]) {
+            return self.for_statement();
+        }
 
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+
+        let initializer = if self.match_token(&[TokenType::Semicolon]) {
+            None
+        } else if self.match_token(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
+
+        let increment = if !self.check(TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = Stmt::Block(vec![body, Stmt::Expression(Box::new(increment))]);
+        }
+
+        if let Some(condition) = condition {
+            body = Stmt::While(Box::new(condition), Box::new(body));
+        } else {
+            body = Stmt::While(
+                Box::new(Expr::Literal(Object::Boolean(true))),
+                Box::new(body),
+            );
+        }
+
+        if let Some(initializer) = initializer {
+            body = Stmt::Block(vec![initializer, body]);
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
@@ -372,6 +422,92 @@ mod tests {
                 Box::new(Expr::Literal(Object::Number(3.0))),
             )))),
         )));
+        assert_eq!(statements[0], expected);
+    }
+
+    #[test]
+    fn test_for_loop_desugaring() {
+        // for (var i = 0; i < 3; i = i + 1) print i;
+        let tokens = vec![
+            Token::new(TokenType::For, "for".to_string(), None, 1),
+            Token::new(TokenType::LeftParen, "(".to_string(), None, 1),
+            Token::new(TokenType::Var, "var".to_string(), None, 1),
+            Token::new(TokenType::Identifier, "i".to_string(), None, 1),
+            Token::new(TokenType::Equal, "=".to_string(), None, 1),
+            Token::new(
+                TokenType::Number,
+                "0".to_string(),
+                Some(Object::Number(0.0)),
+                1,
+            ),
+            Token::new(TokenType::Semicolon, ";".to_string(), None, 1),
+            Token::new(TokenType::Identifier, "i".to_string(), None, 1),
+            Token::new(TokenType::Less, "<".to_string(), None, 1),
+            Token::new(
+                TokenType::Number,
+                "3".to_string(),
+                Some(Object::Number(3.0)),
+                1,
+            ),
+            Token::new(TokenType::Semicolon, ";".to_string(), None, 1),
+            Token::new(TokenType::Identifier, "i".to_string(), None, 1),
+            Token::new(TokenType::Equal, "=".to_string(), None, 1),
+            Token::new(TokenType::Identifier, "i".to_string(), None, 1),
+            Token::new(TokenType::Plus, "+".to_string(), None, 1),
+            Token::new(
+                TokenType::Number,
+                "1".to_string(),
+                Some(Object::Number(1.0)),
+                1,
+            ),
+            Token::new(TokenType::RightParen, ")".to_string(), None, 1),
+            Token::new(TokenType::Print, "print".to_string(), None, 1),
+            Token::new(TokenType::Identifier, "i".to_string(), None, 1),
+            Token::new(TokenType::Semicolon, ";".to_string(), None, 1),
+            Token::new(TokenType::Eof, "".to_string(), None, 1),
+        ];
+
+        let mut parser = Parser::new(tokens);
+        let statements = parser.parse();
+
+        // Expected desugared form:
+        // {
+        //   var i = 0;
+        //   while (i < 3) {
+        //     print i;
+        //     i = i + 1;
+        //   }
+        // }
+        let var_token = Token::new(TokenType::Identifier, "i".to_string(), None, 1);
+        let expected = Stmt::Block(vec![
+            // var i = 0;
+            Stmt::Var(
+                var_token.clone(),
+                Some(Box::new(Expr::Literal(Object::Number(0.0)))),
+            ),
+            // while (i < 3) { print i; i = i + 1; }
+            Stmt::While(
+                Box::new(Expr::Binary(
+                    Box::new(Expr::Variable(var_token.clone())),
+                    Token::new(TokenType::Less, "<".to_string(), None, 1),
+                    Box::new(Expr::Literal(Object::Number(3.0))),
+                )),
+                Box::new(Stmt::Block(vec![
+                    // print i;
+                    Stmt::Print(Box::new(Expr::Variable(var_token.clone()))),
+                    // i = i + 1;
+                    Stmt::Expression(Box::new(Expr::Assignment(
+                        var_token.clone(),
+                        Box::new(Expr::Binary(
+                            Box::new(Expr::Variable(var_token.clone())),
+                            Token::new(TokenType::Plus, "+".to_string(), None, 1),
+                            Box::new(Expr::Literal(Object::Number(1.0))),
+                        )),
+                    ))),
+                ])),
+            ),
+        ]);
+
         assert_eq!(statements[0], expected);
     }
 }
