@@ -96,26 +96,28 @@ impl Parser {
         };
         self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
 
-        let mut body = self.statement()?;
+        let body = self.statement()?;
 
-        if let Some(increment) = increment {
-            body = Stmt::Block(vec![body, Stmt::Expression(Box::new(increment))]);
-        }
+        // Build from inside out: body -> body + increment -> while loop -> block with initializer
+        let body_with_increment = match increment {
+            Some(increment) => Stmt::Block(vec![body, Stmt::Expression(Box::new(increment))]),
+            None => body,
+        };
 
-        if let Some(condition) = condition {
-            body = Stmt::While(Box::new(condition), Box::new(body));
-        } else {
-            body = Stmt::While(
+        let while_loop = match condition {
+            Some(condition) => Stmt::While(Box::new(condition), Box::new(body_with_increment)),
+            None => Stmt::While(
                 Box::new(Expr::Literal(Object::Boolean(true))),
-                Box::new(body),
-            );
-        }
+                Box::new(body_with_increment),
+            ),
+        };
 
-        if let Some(initializer) = initializer {
-            body = Stmt::Block(vec![initializer, body]);
-        }
+        let result = match initializer {
+            Some(initializer) => Stmt::Block(vec![initializer, while_loop]),
+            None => while_loop,
+        };
 
-        Ok(body)
+        Ok(result)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
