@@ -40,6 +40,7 @@ impl Interpreter {
             Stmt::If(condition, then_branch, else_branch) => {
                 self.execute_if_statement(condition, then_branch, else_branch)
             }
+            Stmt::While(condition, body) => self.execute_while_statement(condition, body),
         }
     }
 
@@ -58,8 +59,7 @@ impl Interpreter {
 
     //visitBlockStmt
     fn execute_block_statement(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
-        let mut new_environment = Environment::new(Some(Box::new(self.environment.clone())));
-        self.execute_block(statements, &mut new_environment)
+        self.execute_block(statements)
     }
 
     //visitIfStmt
@@ -78,16 +78,23 @@ impl Interpreter {
         Ok(())
     }
 
-    fn execute_block(
-        &mut self,
-        statements: &[Stmt],
-        environment: &mut Environment,
-    ) -> Result<(), RuntimeError> {
-        let previous_environment = std::mem::replace(&mut self.environment, environment.clone());
+    fn execute_block(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+        // Create a new environment for the block
+        let block_environment = Environment::new(None);
+
+        // Move the current environment to be the enclosing environment
+        let current_environment = std::mem::replace(&mut self.environment, block_environment);
+        self.environment.enclosing = Some(Box::new(current_environment));
+
         for statement in statements {
             self.execute(statement)?;
         }
-        self.environment = previous_environment;
+
+        // // Restore the enclosing environment (which may have been modified by assignments)
+        if let Some(enclosing) = self.environment.enclosing.take() {
+            self.environment = *enclosing;
+        }
+
         Ok(())
     }
 
@@ -103,6 +110,22 @@ impl Interpreter {
             Object::Nil
         };
         self.environment.define(name.lexeme.clone(), value);
+        Ok(())
+    }
+
+    //visitWhileStmt
+    fn execute_while_statement(
+        &mut self,
+        condition: &Expr,
+        body: &Stmt,
+    ) -> Result<(), RuntimeError> {
+        loop {
+            let condition_val = self.evaluate(condition)?;
+            if !self.is_truthy(&condition_val) {
+                break;
+            }
+            self.execute(body)?;
+        }
         Ok(())
     }
 
@@ -528,5 +551,51 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, Object::Boolean(true));
+    }
+
+    #[test]
+    fn test_while_loop_with_blocks() {
+        // Test that while loops work correctly with variable assignments in blocks
+        let mut interpreter = Interpreter::new();
+
+        let var_a = Token::new(TokenType::Identifier, "a".to_string(), None, 1);
+
+        let statements = vec![
+            // var a = 0;
+            Stmt::Var(
+                var_a.clone(),
+                Some(Box::new(Expr::Literal(Object::Number(0.0)))),
+            ),
+            // while (a < 3) {
+            //     a = a + 1;
+            // }
+            Stmt::While(
+                Box::new(Expr::Binary(
+                    Box::new(Expr::Variable(var_a.clone())),
+                    Token::new(TokenType::Less, "<".to_string(), None, 1),
+                    Box::new(Expr::Literal(Object::Number(3.0))),
+                )),
+                Box::new(Stmt::Block(vec![Stmt::Expression(Box::new(
+                    Expr::Assignment(
+                        var_a.clone(),
+                        Box::new(Expr::Binary(
+                            Box::new(Expr::Variable(var_a.clone())),
+                            Token::new(TokenType::Plus, "+".to_string(), None, 1),
+                            Box::new(Expr::Literal(Object::Number(1.0))),
+                        )),
+                    ),
+                ))])),
+            ),
+        ];
+
+        interpreter.interpret(statements);
+
+        // Should not have any errors
+        assert!(!interpreter.error_reporter.had_runtime_error);
+        // Variable should have been incremented to 3
+        assert_eq!(
+            interpreter.environment.get(&var_a).unwrap(),
+            Object::Number(3.0)
+        );
     }
 }
