@@ -1,3 +1,4 @@
+use crate::callable::{Callable, NativeCallable};
 use crate::environment::EnvironmentStack;
 use crate::error_reporter::ErrorReporter;
 use crate::expressions::Expr;
@@ -17,9 +18,19 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
+        let mut env = EnvironmentStack::new();
+        let clock = NativeCallable::new(0, |_, _| {
+            Ok(Object::Number(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as f64,
+            ))
+        });
+        env.define_global("clock", Object::NativeFunction(clock));
         Self {
             error_reporter: ErrorReporter::new(),
-            environment: EnvironmentStack::new(),
+            environment: env,
         }
     }
 
@@ -136,6 +147,7 @@ impl Interpreter {
             Expr::Variable(name) => self.evaluate_variable_expr(name),
             Expr::Assignment(name, value) => self.evaluate_assignment_expr(name, value),
             Expr::Logical(left, op, right) => self.evaluate_logical_expr(left, op, right),
+            Expr::Call(callee, paren, args) => self.evaluate_call_expr(callee, paren, args),
         }
     }
 
@@ -205,6 +217,41 @@ impl Interpreter {
                 token: op.clone(),
             }),
         }
+    }
+
+    // visitCallExpr
+    fn evaluate_call_expr(
+        &mut self,
+        callee: &Expr,
+        paren: &Token,
+        args: &[Expr],
+    ) -> Result<Object, RuntimeError> {
+        let eval_callee = self.evaluate(callee)?;
+        let arguments: Vec<Object> = args
+            .iter()
+            .map(|arg| self.evaluate(arg))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let callable = match eval_callee {
+            Object::NativeFunction(callable) => callable,
+            _ => Err(RuntimeError {
+                message: "Can only call functions and classes".to_string(),
+                token: paren.clone(),
+            })?,
+        };
+
+        if args.len() != callable.arity() {
+            Err(RuntimeError {
+                message: format!(
+                    "Expected {} arguments but got {}",
+                    callable.arity(),
+                    args.len()
+                ),
+                token: paren.clone(),
+            })?
+        }
+
+        callable.call(self, arguments)
     }
 
     // visitGroupingExpr
@@ -548,6 +595,27 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, Object::Boolean(true));
+    }
+
+    #[test]
+    fn test_call_expression() {
+        let mut interpreter = Interpreter::new();
+
+        // Create tokens for clock()
+        let clock_token = Token::new(TokenType::Identifier, "clock".to_string(), None, 1);
+        let paren_token = Token::new(TokenType::LeftParen, "(".to_string(), None, 1);
+
+        // Create call expression: clock()
+        let call_expr = Expr::Call(Box::new(Expr::Variable(clock_token)), paren_token, vec![]);
+
+        // Evaluate the call
+        let result = interpreter.evaluate(&call_expr).unwrap();
+
+        // Verify it returns a Number
+        match result {
+            Object::Number(_) => {} // Success - clock() should return current time as number
+            _ => panic!("Expected clock() to return a Number, got {:?}", result),
+        }
     }
 
     #[test]

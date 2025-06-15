@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::callable::NativeCallable;
+
 #[rustfmt::skip]
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub enum TokenType {
@@ -28,6 +30,7 @@ pub enum Object {
     Number(f64),
     Nil,
     Boolean(bool),
+    NativeFunction(NativeCallable),
 }
 
 impl fmt::Display for Object {
@@ -37,6 +40,7 @@ impl fmt::Display for Object {
             Object::Number(n) => write!(f, "{}", n),
             Object::Boolean(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
+            Object::NativeFunction(_) => write!(f, "<native function>"),
         }
     }
 }

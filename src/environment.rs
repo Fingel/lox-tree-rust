@@ -47,6 +47,13 @@ impl EnvironmentStack {
         })
     }
 
+    pub fn define_global(&mut self, name: &str, value: Object) {
+        self.environments
+            .first_mut()
+            .unwrap()
+            .insert(name.to_owned(), value);
+    }
+
     pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), RuntimeError> {
         // Search through the stack from top to bottom (most recent to oldest)
         for environment in self.environments.iter_mut().rev() {

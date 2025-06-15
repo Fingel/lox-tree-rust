@@ -5,6 +5,7 @@ use std::fmt;
 pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
+    Call(Box<Expr>, Token, Vec<Expr>),
     Grouping(Box<Expr>),
     Literal(Object),
     Variable(Token),
@@ -27,6 +28,10 @@ impl fmt::Display for Expr {
             Expr::Assignment(token, expr) => write!(f, "{} = {}", &token.lexeme, expr),
             Expr::Logical(left, operator, right) => {
                 write!(f, "{}", parenthesize(&operator.lexeme, &[left, right]))
+            }
+            Expr::Call(callee, paren, args) => {
+                let refs: Vec<&Expr> = args.iter().collect();
+                write!(f, "{}{}{}", callee, paren, parenthesize("call", &refs))
             }
         }
     }
