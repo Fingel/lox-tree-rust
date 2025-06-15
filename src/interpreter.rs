@@ -12,16 +12,60 @@ pub struct RuntimeError {
 
 pub struct Interpreter {
     pub error_reporter: ErrorReporter,
-    environment: Environment,
+    environment_stack: Vec<Environment>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
             error_reporter: ErrorReporter::new(),
-            environment: Environment::new(None),
+            environment_stack: vec![Environment::new()],
         }
     }
+
+    pub fn current_environment(&mut self) -> &mut Environment {
+        self.environment_stack.last_mut().unwrap()
+    }
+
+    pub fn push_environment(&mut self) {
+        self.environment_stack.push(Environment::new());
+    }
+
+    pub fn pop_environment(&mut self) {
+        if self.environment_stack.len() > 1 {
+            self.environment_stack.pop();
+        }
+    }
+
+    fn get_variable(&self, name: &Token) -> Result<Object, RuntimeError> {
+        // Search through the stack from top to bottom (most recent to oldest)
+        for environment in self.environment_stack.iter().rev() {
+            if let Some(value) = environment.values.get(&name.lexeme) {
+                return Ok(value.clone());
+            }
+        }
+
+        Err(RuntimeError {
+            message: format!("Undefined variable '{}'.", name.lexeme),
+            token: name.clone(),
+        })
+    }
+
+    fn assign_variable(&mut self, name: &Token, value: Object) -> Result<(), RuntimeError> {
+        // Search through the stack from top to bottom (most recent to oldest)
+        for environment in self.environment_stack.iter_mut().rev() {
+            if environment.values.contains_key(&name.lexeme) {
+                environment.values.insert(name.lexeme.clone(), value);
+                return Ok(());
+            }
+        }
+
+        Err(RuntimeError {
+            message: format!("Undefined variable '{}'.", name.lexeme),
+            token: name.clone(),
+        })
+    }
+
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
         for statement in statements {
             if let Err(err) = self.execute(&statement) {
@@ -80,20 +124,16 @@ impl Interpreter {
 
     fn execute_block(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
         // Create a new environment for the block
-        let block_environment = Environment::new(None);
-
-        // Move the current environment to be the enclosing environment
-        let current_environment = std::mem::replace(&mut self.environment, block_environment);
-        self.environment.enclosing = Some(Box::new(current_environment));
+        self.push_environment();
 
         for statement in statements {
-            self.execute(statement)?;
+            if let Err(e) = self.execute(statement) {
+                self.pop_environment();
+                return Err(e);
+            }
         }
 
-        // // Restore the enclosing environment (which may have been modified by assignments)
-        if let Some(enclosing) = self.environment.enclosing.take() {
-            self.environment = *enclosing;
-        }
+        self.pop_environment();
 
         Ok(())
     }
@@ -109,7 +149,8 @@ impl Interpreter {
         } else {
             Object::Nil
         };
-        self.environment.define(name.lexeme.clone(), value);
+        self.current_environment()
+            .define(name.lexeme.clone(), value);
         Ok(())
     }
 
@@ -149,7 +190,7 @@ impl Interpreter {
         value: &Expr,
     ) -> Result<Object, RuntimeError> {
         let value = self.evaluate(value)?;
-        self.environment.assign(name, value.clone())?;
+        self.assign_variable(name, value.clone())?;
         Ok(value)
     }
 
@@ -260,7 +301,7 @@ impl Interpreter {
 
     // visitVariableExpr
     fn evaluate_variable_expr(&mut self, name: &Token) -> Result<Object, RuntimeError> {
-        self.environment.get(name)
+        self.get_variable(name)
     }
 
     fn check_number_operand(
@@ -367,7 +408,7 @@ mod tests {
         assert!(!interpreter.error_reporter.had_runtime_error);
         // Variable should exist in environment
         assert_eq!(
-            interpreter.environment.get(&var_name).unwrap(),
+            interpreter.get_variable(&var_name).unwrap(),
             Object::Number(123.0)
         );
     }
@@ -396,7 +437,7 @@ mod tests {
         assert!(!interpreter.error_reporter.had_runtime_error);
         // Variable should exist in environment
         assert_eq!(
-            interpreter.environment.get(&var_name).unwrap(),
+            interpreter.get_variable(&var_name).unwrap(),
             Object::Number(42.0)
         );
     }
@@ -450,11 +491,11 @@ mod tests {
 
         // After all blocks have closed, variables should have their global values
         assert_eq!(
-            interpreter.environment.get(&var_a).unwrap(),
+            interpreter.get_variable(&var_a).unwrap(),
             Object::String("global a".to_string())
         );
         assert_eq!(
-            interpreter.environment.get(&var_b).unwrap(),
+            interpreter.get_variable(&var_b).unwrap(),
             Object::String("global b".to_string())
         );
     }
@@ -594,7 +635,7 @@ mod tests {
         assert!(!interpreter.error_reporter.had_runtime_error);
         // Variable should have been incremented to 3
         assert_eq!(
-            interpreter.environment.get(&var_a).unwrap(),
+            interpreter.get_variable(&var_a).unwrap(),
             Object::Number(3.0)
         );
     }
